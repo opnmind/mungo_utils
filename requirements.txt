@@ -1,0 +1,7 @@
+numpy
+wavio
+aifcio
+dsp
+scipy
+matplotlib
+pydub

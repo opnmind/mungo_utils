@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 #Timothy Becker, 25/07/2016 version 0.0
+#opnmind 27/05/2021 version 0.1
 
 import argparse
 import os
@@ -10,6 +11,7 @@ import wavio
 import aifcio
 #dsp libs need numpy and scipy
 import dsp
+from pydub import AudioSegment
 
 #auto detect the file type based on supplied extensions given the input directory
 #target the appropriate number of resampling buffer from mungo manuals
@@ -23,7 +25,7 @@ def read_aifs_or_wavs(in_dir,
                       phase=False,
                       rev=False,
                       fade=256,
-                      target={'G0':500000,'S0':200000,'W0':4000,'C0':12000}):
+                      target={'G0':500000,'G0V2':500000,'S0':200000,'W0':4000,'C0':12000,'C1':49000}):
     audio_files = []
     for ext in exts:
         audio_files += glob.glob(in_dir+'/*.'+ext) #load the extensions that we want
@@ -64,15 +66,22 @@ def read_aifs_or_wavs(in_dir,
 def write_mungo(out_dir,
                 data,
                 module='G0',
-                prefix={'G0':'W','S0':'S','C0':'W','W0':'W'}):
+                prefix={'G0':'W','G0V2':'W','S0':'S','C0':'W','C1':'W','W0':'W'}):
+    out_dir = out_dir + "/" + module.lower()
     if not os.path.exists(out_dir): os.makedirs(out_dir)
     j = 0
+    if "G0V2" or "C1" in module:
+        divider = 16
+    else:
+        divider = 10
+
     for i in range(len(data)):
-        if j%10==0: #make a new directory if needed
-            j,last_dir = 0,out_dir+'/'+str(i/10)+'/'
+        if j%divider==0: #make a new directory if needed
+            j,last_dir = 0,out_dir+'/'+str(i/divider)+'/'
         if not os.path.exists(last_dir):
             os.makedirs(last_dir)
-        wavio.write(last_dir+prefix[module]+str(j)+'.wav',data[i],len(data[i]),sampwidth=2)
+        save_file = last_dir+prefix[module]+str(hex(j)[2:])+'.wav'
+        wavio.write(save_file.upper(),data[i],len(data[i]),sampwidth=2)
         j += 1
     return True
 
@@ -131,7 +140,20 @@ def gen_W0_WTs(out_dir,WTs=10,buffersize=int(4E3),C=[0,0,0,1,1,1],h_range=range(
             os.makedirs(last_dir)
         wavio.write(last_dir+'W'+str(j)+'.wav',data[i],len(data[i]),sampwidth=2)
         j += 1
-    return True    
+    return True
+
+def concat_samples(in_dir,out_dir):
+    audio_files += glob.glob(in_dir+'/*.WAV')
+
+    data,err,ns = [],[],[]
+    for audio_file in audio_files:
+        try:
+            data += AudioSegment.from_file("/path/to/sound.wav", format="wav")
+        except Exception:
+            err += [audio_file]
+            pass
+    
+    file_handle = data.export(out_dir + "W0.WAV", format="wav")
     
 #now can be used as a library too: import mungo_utils
 if __name__ == '__main__':
