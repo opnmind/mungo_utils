@@ -29,7 +29,12 @@ def read_aifs_or_wavs(in_dir,
     audio_files = []
     for ext in exts:
         audio_files += glob.glob(in_dir+'/*.'+ext) #load the extensions that we want
-        
+
+    if "G0V2" in module:
+        module_translate = 'G0'
+    else:
+        module_translate = module
+
     data,err,ns = [],[],[]
     for audio_file in audio_files:
         try:
@@ -42,15 +47,16 @@ def read_aifs_or_wavs(in_dir,
                 if   is_aif: mono,rate = dsp.multi_to_mono(aifcio.read(audio_file),mix)    #convert to mono
                 elif is_wav: mono,rate = dsp.multi_to_mono(wavio.read(audio_file),mix)     #convert to mono
             if trim:  mono = dsp.trim(mono)
-            if phase: mono = dsp.phase_vocoder(mono,rate,1024,1.0*target[module]/rate)     #timestretching via PV
-            resampled = dsp.resample(mono,target,module)                                   #up/down sample
+            if phase: mono = dsp.phase_vocoder(mono,rate,1024,1.0*target[module_translate]/rate)     #timestretching via PV
+            resampled = dsp.resample(mono,target,module_translate)                                   #up/down sample
             if norm: resampled = dsp.normalize(resampled)                                  #normalize and clean final result
             if fade > 0: resampled = dsp.fade_out(resampled,fade)                          #exp fade out
             if rev: resampled = dsp.reverse(resampled)                                     #option reverse
             data += [resampled]
             print('---------------------------------------------------')
-        except Exception:
+        except Exception as e:
             err += [audio_file]
+            print('Error: %s'%e)
             pass
     if len(err)>0:
         print('Conversion errors with the following supported files:')
@@ -80,8 +86,8 @@ def write_mungo(out_dir,
             j,last_dir = 0,out_dir+'/'+str(i/divider)+'/'
         if not os.path.exists(last_dir):
             os.makedirs(last_dir)
-        save_file = last_dir+prefix[module]+str(hex(j)[2:])+'.wav'
-        wavio.write(save_file.upper(),data[i],len(data[i]),sampwidth=2)
+        save_file = prefix[module.upper()] + str(hex(j)[2:]).upper() + '.WAV'
+        wavio.write(last_dir + "/" + save_file, data[i], len(data[i]), sampwidth=2)
         j += 1
     return True
 

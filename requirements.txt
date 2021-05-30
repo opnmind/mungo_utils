@@ -1,7 +1,8 @@
 numpy
 wavio
-aifcio
-dsp
+#aifcio
+#dsp
 scipy
 matplotlib
 pydub
+python-tk

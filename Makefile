@@ -23,10 +23,10 @@ help:
 
 g0v2:
 	mkdir -p $(OUTPUT)
-	source $(VENV)/bin/activate && $(PYTHON) $(MUNGO_UTILS_BIN) -I $(INPUT) -O $(OUTPUT) -T GV02
+	. $(VENV)/bin/activate && $(PYTHON) $(MUNGO_UTILS_BIN) -I $(INPUT) -O $(OUTPUT) -T G0V2
 
 c1:
-	source $(VENV)/bin/activate && $(PYTHON) $(MUNGO_UTILS_BIN) -I $(INPUT) -O $(OUTPUT) -T C1
+	. $(VENV)/bin/activate && $(PYTHON) $(MUNGO_UTILS_BIN) -I $(INPUT) -O $(OUTPUT) -T C1
 
 all: g0v2 c1
 
@@ -39,8 +39,9 @@ c1-normalize:
 	rm -rf $(OUTPUT)-norm
 
 install:
+	sudo apt install python-tk ffmpeg gcc -y
 	virtualenv -p /usr/bin/$(PYTHON) $(VENV)
-	source $(VENV)/bin/activate && pip install -r requirements.txt
+	. $(VENV)/bin/activate && pip install -r requirements.txt
 
 remove:
 	rm -rf $(VENV)
