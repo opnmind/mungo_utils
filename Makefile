@@ -41,8 +41,8 @@ resample:
 resample-g0: MODULE=G0
 resample-g0: resample
 
-resample-g0: MODULE=G0V2
-resample-g0: resample
+resample-g0v2: MODULE=G0V2
+resample-g0v2: resample
 
 resample-c1: MODULE=C1
 resample-c1: resample
