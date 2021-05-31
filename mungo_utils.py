@@ -11,7 +11,7 @@ import wavio
 import aifcio
 #dsp libs need numpy and scipy
 import dsp
-from pydub import AudioSegment
+#from pydub import AudioSegment
 
 #auto detect the file type based on supplied extensions given the input directory
 #target the appropriate number of resampling buffer from mungo manuals
@@ -32,6 +32,8 @@ def read_aifs_or_wavs(in_dir,
 
     if "G0V2" in module:
         module_translate = 'G0'
+    elif "C1" in module:
+        module_translate = 'C0'
     else:
         module_translate = module
 
@@ -47,8 +49,8 @@ def read_aifs_or_wavs(in_dir,
                 if   is_aif: mono,rate = dsp.multi_to_mono(aifcio.read(audio_file),mix)    #convert to mono
                 elif is_wav: mono,rate = dsp.multi_to_mono(wavio.read(audio_file),mix)     #convert to mono
             if trim:  mono = dsp.trim(mono)
-            if phase: mono = dsp.phase_vocoder(mono,rate,1024,1.0*target[module_translate]/rate)     #timestretching via PV
-            resampled = dsp.resample(mono,target,module_translate)                                   #up/down sample
+            if phase: mono = dsp.phase_vocoder(mono,rate,1024,1.0*target[module]/rate)     #timestretching via PV
+            resampled = dsp.resample(mono,target,module_translate)                         #up/down sample
             if norm: resampled = dsp.normalize(resampled)                                  #normalize and clean final result
             if fade > 0: resampled = dsp.fade_out(resampled,fade)                          #exp fade out
             if rev: resampled = dsp.reverse(resampled)                                     #option reverse
@@ -148,19 +150,52 @@ def gen_W0_WTs(out_dir,WTs=10,buffersize=int(4E3),C=[0,0,0,1,1,1],h_range=range(
         j += 1
     return True
 
-def concat_samples(in_dir,out_dir):
-    audio_files += glob.glob(in_dir+'/*.WAV')
+def concat_samples(in_dir,
+                   out_dir,
+                   module='G0',
+                   fade=256,
+                   exts=('aif','wav'),
+                   target={'G0':500000,'S0':200000,'W0':4000,'C0':12000,'C1':49000}):
 
-    data,err,ns = [],[],[]
+    audio_files = []
+    for ext in exts:
+        audio_files.extend(glob.glob(in_dir + "/*" + ext))
+
+    data, err, ns = [], [], []
     for audio_file in audio_files:
         try:
-            data += AudioSegment.from_file("/path/to/sound.wav", format="wav")
-        except Exception:
+            print('processing %s'%audio_file) #search for aif style file extension
+            is_aif = audio_file.rsplit('.')[-1].upper().find('AIF')>-1
+            is_wav = audio_file.rsplit('.')[-1].upper().find('WAV')>-1
+            if not is_aif and not is_wav: #extension not supported
+                ns += [audio_file]
+                continue
+            else:
+                if   is_aif: mono, rate = dsp.multi_to_mono(aifcio.read(audio_file), False)
+                elif is_wav: mono, rate = dsp.multi_to_mono(wavio.read(audio_file), False)           
+
+            normalized = dsp.normalize(mono)
+            #data += [normalized] 
+            data = np.concatenate((data, normalized), axis=None)
+            print('---------------------------------------------------')
+        except Exception as e:
             err += [audio_file]
+            print("Error normalization: %s"%e)
             pass
+
+    try:
+        print('Concaternate and write file.')
+        resampled = dsp.resample(data, target, module)
+        resampled = dsp.fade_out(resampled, fade)
+    except Exception as e:
+        err += [audio_file]
+        print("Error concaternation: %s"%e)
+        pass
+
+    save_file = module.upper() + '.WAV'
+    wavio.write(out_dir + "/" + save_file, resampled, len(resampled), sampwidth=2)
     
-    file_handle = data.export(out_dir + "W0.WAV", format="wav")
-    
+
 #now can be used as a library too: import mungo_utils
 if __name__ == '__main__':
     #parse commandline arguments for usage
@@ -178,12 +213,13 @@ if __name__ == '__main__':
     parser.add_argument('-T', '--target_mungo_module',type=str, help='the mungo target module to write to\t[G0=500K]')
     parser.add_argument('-O', '--mungo_output_dir',type=str, help='mungo output directory\t[required]')
     #DSP arguments for optional processing
-    parser.add_argument('-m', '--mix',action='store_true', help='mix multiple channels\t[False]')
-    parser.add_argument('-n', '--norm',action='store_true', help='normalize audio and remove DC offset\t[False]')
-    parser.add_argument('-f', '--fade',type=int, help='target buffer fade out in samples default is exponential fade\t[256]')
-    parser.add_argument('-r', '--reverse',action='store_true', help='reverse audio buffer\t[False]')
-    parser.add_argument('-p', '--phase',action='store_true', help='apply phase vocoder timestretch\t[False]')
-    parser.add_argument('-t', '--trim',action='store_true', help='trim begining and end of file based on amplitude\t[False]')
+    parser.add_argument('-m', '--mix', action='store_true', help='mix multiple channels\t[False]')
+    parser.add_argument('-n', '--norm', action='store_true', help='normalize audio and remove DC offset\t[False]')
+    parser.add_argument('-f', '--fade', type=int, help='target buffer fade out in samples default is exponential fade\t[256]')
+    parser.add_argument('-r', '--reverse', action='store_true', help='reverse audio buffer\t[False]')
+    parser.add_argument('-p', '--phase', action='store_true', help='apply phase vocoder timestretch\t[False]')
+    parser.add_argument('-t', '--trim', action='store_true', help='trim begining and end of file based on amplitude\t[False]')
+    parser.add_argument('-c', '--concat', action='store_true', help='normalize and concaternate all audio files\t[False]')
     args = parser.parse_args()
     #check all the options and set defaults that have not been specified
     if args.audio_input_dir is not None:
@@ -215,7 +251,11 @@ if __name__ == '__main__':
     if args.target_mungo_module is not None:
         module = args.target_mungo_module
     else:
-        module = 'G0'    
-    #now batch process all the inputs and autogenerate the mungo WAV files
-    data = read_aifs_or_wavs(in_dir,exts,module,mix,trim,norm,phase,reverse,fade)
-    write_mungo(mungo_out_dir,data,module)
+        module = 'G0'
+
+    if args.concat is not None:
+         concat_samples(in_dir, mungo_out_dir, module, fade)
+    else:
+        #now batch process all the inputs and autogenerate the mungo WAV files
+        data = read_aifs_or_wavs(in_dir, exts, module, mix, trim, norm, phase, reverse, fade)
+        write_mungo(mungo_out_dir, data, module)

@@ -12,6 +12,9 @@ ifndef OUTPUT:
 OUTPUT=./output
 endif
 
+ifndef MODULE:
+MODULE=G0
+endif
 
 help:
 	@echo make install
@@ -21,25 +24,24 @@ help:
 	@echo make clean
 	@echo make remove
 
-g0v2:
+resample:
 	mkdir -p $(OUTPUT)
-	. $(VENV)/bin/activate && $(PYTHON) $(MUNGO_UTILS_BIN) -I $(INPUT) -O $(OUTPUT) -T G0V2
+	. $(VENV)/bin/activate && $(PYTHON) $(MUNGO_UTILS_BIN) -I $(INPUT) -O $(OUTPUT) -T $(MODULE)
 
-c1:
-	. $(VENV)/bin/activate && $(PYTHON) $(MUNGO_UTILS_BIN) -I $(INPUT) -O $(OUTPUT) -T C1
+resample-c1: MODULE=C1
+resample-c1: resample
 
-all: g0v2 c1
+concat:
+	mkdir -p $(OUTPUT)
+	. $(VENV)/bin/activate && $(PYTHON) $(MUNGO_UTILS_BIN) -I $(INPUT) -O $(OUTPUT) -T $(MODULE) -c
 
-c1-normalize:
-	mkdir -p $(OUTPUT)-norm
-	source $(VENV)/bin/activate && \
-	$(PYTHON) $(MUNGO_UTILS_BIN) -I $(INPUT) -O $(OUTPUT)-norm -T C1 -n \
-	&& \
-	$(PYTHON) $(MUNGO_UTILS_BIN) -I $(OUTPUT)-norm -O $(OUTPUT) -T C1
-	rm -rf $(OUTPUT)-norm
+concat-c1: MODULE=C1
+concat-c1: concat
+
+install-debian:
+	sudo apt install python-tk ffmpeg gcc -y
 
 install:
-	sudo apt install python-tk ffmpeg gcc -y
 	virtualenv -p /usr/bin/$(PYTHON) $(VENV)
 	. $(VENV)/bin/activate && pip install -r requirements.txt
 
