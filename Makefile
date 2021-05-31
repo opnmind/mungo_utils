@@ -69,3 +69,4 @@ remove:
 
 clean:
 	rm -rf $(OUTPUT)/*
+	rm -f *.pyc

@@ -6,12 +6,11 @@ import argparse
 import os
 import glob
 import numpy as np
+
 #here are libraries that can handle 24-bit depths
-import wavio
-import aifcio
-#dsp libs need numpy and scipy
-import dsp
-#from pydub import AudioSegment
+from lib import wavio
+from lib import aifcio
+from lib import dsp
 
 #auto detect the file type based on supplied extensions given the input directory
 #target the appropriate number of resampling buffer from mungo manuals
