@@ -160,7 +160,8 @@ def concat_samples(in_dir,
     for ext in exts:
         audio_files.extend(glob.glob(in_dir + "/*" + ext))
 
-    data, err, ns = [], [], []
+    sample_buffer = target[module]
+    data, data_pool, err, ns = [], [], [], []
     for audio_file in audio_files:
         try:
             print('processing %s'%audio_file) #search for aif style file extension
@@ -174,26 +175,41 @@ def concat_samples(in_dir,
                 elif is_wav: mono, rate = dsp.multi_to_mono(wavio.read(audio_file), False)           
 
             normalized = dsp.normalize(mono)
-            #data += [normalized] 
-            data = np.concatenate((data, normalized), axis=None)
+            #data = np.concatenate((data, normalized), axis=None)
             print('---------------------------------------------------')
+
+            # break down in parts if sample rate is exhausted
+            print(str(sample_buffer) + '/' + str(rate))
+            if sample_buffer - rate < 0:
+                data_pool += [data]
+                data = []
+                sample_buffer = target[module]
+            else:
+                sample_buffer = sample_buffer - rate
+            
+            data = np.concatenate((data, normalized), axis=None)
         except Exception as e:
             err += [audio_file]
             print("Error normalization: %s"%e)
             pass
+    data_pool += [data]
 
+    i = 0
     try:
-        print('Concaternate and write file.')
-        resampled = dsp.resample(data, target, module)
-        resampled = dsp.fade_out(resampled, fade)
+        print('Resample and write files.')
+        for resample in data_pool:
+            print("data %s"%resample)
+            resampled = dsp.resample(resample, target, module)
+            resampled = dsp.fade_out(resampled, fade)
+            save_file = module[:1].upper() + str(hex(i)[2:]).upper() + '.WAV'
+            print("Write file %s"%save_file)
+            wavio.write(out_dir + "/" + save_file, resampled, len(resampled), sampwidth=2)
+            i += 1
     except Exception as e:
         err += [audio_file]
-        print("Error concaternation: %s"%e)
+        print("Error concatenation: %s"%e)
         pass
 
-    save_file = module.upper() + '.WAV'
-    wavio.write(out_dir + "/" + save_file, resampled, len(resampled), sampwidth=2)
-    
 
 #now can be used as a library too: import mungo_utils
 if __name__ == '__main__':
