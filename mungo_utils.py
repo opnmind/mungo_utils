@@ -234,7 +234,7 @@ if __name__ == '__main__':
     parser.add_argument('-r', '--reverse', action='store_true', help='reverse audio buffer\t[False]')
     parser.add_argument('-p', '--phase', action='store_true', help='apply phase vocoder timestretch\t[False]')
     parser.add_argument('-t', '--trim', action='store_true', help='trim begining and end of file based on amplitude\t[False]')
-    parser.add_argument('-c', '--concat', action='store_true', help='normalize and concaternate all audio files\t[False]')
+    parser.add_argument('-c', '--concat', action='store_true', help='normalize and concatenate all audio files\t[False]')
     args = parser.parse_args()
     #check all the options and set defaults that have not been specified
     if args.audio_input_dir is not None:
