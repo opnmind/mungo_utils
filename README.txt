@@ -32,7 +32,7 @@ optional arguments:
   -r, --reverse         reverse audio buffer [False]
   -p, --phase           apply phase vocoder timestretch [False]
   -t, --trim            trim begining and end of file based on amplitude [False]
-  -c, --concat          normalize and concaternate all audio files [False]
+  -c, --concat          normalize and concatenate all audio files [False]
 
   
 [EXAMPLE USING THE GPL TEST FILES]
